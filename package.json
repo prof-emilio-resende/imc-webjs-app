@@ -1,0 +1,16 @@
+{
+  "name": "api-node-imc",
+  "version": "1.0.0",
+  "description": "node api to calculate imc",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha"
+  },
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "devDependencies": {
+    "mocha": "^10.2.0",
+    "chai": "^4.3.7"
+  }
+}
