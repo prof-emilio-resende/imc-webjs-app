@@ -1,15 +1,29 @@
 import { JSDOM } from "jsdom";
-import { assert, expect, should } from "chai";
+import { expect, should } from "chai";
 
 import { buildEventTarget } from "./helpers/events.js";
-import dft, {
-  calculateImc, initialize
-}
-  from "../app/index.js";
+import { calculateImc, initialize } from "../app/calculate.imc.js";
 
 should();
 
 describe("IMC", function () {
+  beforeEach(() => {
+    const dom = new JSDOM(
+      `<html>
+         <body>
+          <input id="altura" value="1.77" placeholder="0.00" />
+          <input id="peso" value="80" placeholder="0.00" />
+          <button type="button" class="action">Calcular</button>
+          <div class="data">Seu IMC &eacute; <span id="imc"></span></div>
+         </body>
+       </html>`,
+      { url: 'http://localhost' },
+    );
+
+    global.window = dom.window;
+    global.document = dom.window.document;
+  });
+
   describe("#calculateImc(height, weight)", function () {
     it("should return null when height is zero", function () {
       expect(calculateImc(0, 88)).to.be.null
@@ -59,21 +73,21 @@ describe("#render", function () {
     global.document = dom.window.document;
   });
 
-  describe("#initialize", function() {
-    it("should prepare DOM elements to implement calculate imc logic", function() {
+  describe("#initialize", function () {
+    it("should prepare DOM elements to implement calculate imc logic", function () {
       // arrange
       const button = document.querySelector('button.action');
       const [evtTarget, evtlist] = buildEventTarget();
-      button.addEventListener = evtTarget.addEventListener.bind({self: evtTarget, target: button});
+      button.addEventListener = evtTarget.addEventListener.bind({ self: evtTarget, target: button });
 
       // act
       initialize();
 
       // assert
-      expect(evtlist['click'].map(x => x['listener'].name)).to.contain.oneOf(['calculate']);
+      expect(evtlist['click'].map(x => x['listener'].name)).to.contain.oneOf(['debounceFct']);
       expect(
         evtlist['click']
-          .filter(x => x['listener'].name == 'calculate')
+          .filter(x => x['listener'].name == 'debounceFct')
           .map(x => x['target'])[0]
       )
         .to.equal(document.querySelector('button.action'));
