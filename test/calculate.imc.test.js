@@ -1,5 +1,6 @@
 import { JSDOM } from "jsdom";
 import { expect, should } from "chai";
+import sinon from "sinon";
 
 import { buildEventTarget } from "./helpers/events.js";
 import { calculateImc, initialize } from "../app/calculate.imc.js";
@@ -8,20 +9,8 @@ should();
 
 describe("IMC", function () {
   beforeEach(() => {
-    const dom = new JSDOM(
-      `<html>
-         <body>
-          <input id="altura" value="1.77" placeholder="0.00" />
-          <input id="peso" value="80" placeholder="0.00" />
-          <button type="button" class="action">Calcular</button>
-          <div class="data">Seu IMC &eacute; <span id="imc"></span></div>
-         </body>
-       </html>`,
-      { url: 'http://localhost' },
-    );
-
-    global.window = dom.window;
-    global.document = dom.window.document;
+    initializeDOM();
+    initializeAJAX();
   });
 
   describe("#calculateImc(height, weight)", function () {
@@ -47,9 +36,18 @@ describe("IMC", function () {
     ];
 
     scenarios.forEach(scenario => {
-      it(`should return ${scenario.imc} when height is ${scenario.height} and weight is ${scenario.weight}`, function () {
-        expect(calculateImc(scenario.height, scenario.weight)['imc']).to.equal(scenario.imc);
-        expect(calculateImc(scenario.height, scenario.weight)['imcDescription']).to.equal(scenario.imcDescription);
+      it(`should return ${scenario.imc} when height is ${scenario.height} and weight is ${scenario.weight}`, function (done) {
+        global.server.respondWith([
+          200,
+          { "Content-Type": "application/json" },
+          JSON.stringify(scenario)
+        ]);
+
+        calculateImc(scenario.height, scenario.weight, (p) => {
+          expect(p['imc']).to.equal(scenario.imc);
+          expect(p['imcDescription']).to.equal(scenario.imcDescription);
+          done();
+        });
       });
     });
   })
@@ -57,20 +55,8 @@ describe("IMC", function () {
 
 describe("#render", function () {
   beforeEach(() => {
-    const dom = new JSDOM(
-      `<html>
-         <body>
-          <input id="altura" value="1.77" placeholder="0.00" />
-          <input id="peso" value="80" placeholder="0.00" />
-          <button type="button" class="action">Calcular</button>
-          <div class="data">Seu IMC &eacute; <span id="imc"></span></div>
-         </body>
-       </html>`,
-      { url: 'http://localhost' },
-    );
-
-    global.window = dom.window;
-    global.document = dom.window.document;
+    initializeDOM();
+    initializeAJAX();
   });
 
   describe("#initialize", function () {
@@ -96,6 +82,13 @@ describe("#render", function () {
 
   describe("#action", function () {
     it("should calculate IMC and fulfill the imc <span> to provide user feedback", function () {
+      // arrange
+      global.server.respondWith([
+        200,
+        { "Content-Type": "application/json" },
+        JSON.stringify({ 'height': 1.77, 'weight': 80, 'imc': 25.54, 'imcDescription': 'sobrepeso' })
+      ]);
+
       // act
       initialize();
       document.querySelector("button.action").click();
@@ -105,3 +98,28 @@ describe("#render", function () {
     });
   });
 });
+
+function initializeDOM() {
+  const dom = new JSDOM(
+    `<html>
+         <body>
+          <input id="altura" value="1.77" placeholder="0.00" />
+          <input id="peso" value="80" placeholder="0.00" />
+          <button type="button" class="action">Calcular</button>
+          <div class="data">Seu IMC &eacute; <span id="imc"></span></div>
+         </body>
+       </html>`,
+    { url: 'http://localhost' }
+  );
+
+  global.window = dom.window;
+  global.document = dom.window.document;
+}
+
+function initializeAJAX() {
+  global.server = sinon.fakeServer.create({
+    autoRespond: true,
+    respondImmediately: true
+  });
+  global.XMLHttpRequest = global.server.xhr;
+}
